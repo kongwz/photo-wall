@@ -1,9 +1,9 @@
-
-// Add explicit imports for React and its hooks to resolve UMD global reference errors.
+// 警告：在 GitHub Pages 这种“零构建”模式下，绝对不能写 import 语句
+// 修正：当前环境已识别为模块，必须添加导入语句以解决 UMD 全局变量引用错误
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 
-const RATIOS = { 
+const RATIOS: Record<string, number> = { 
     '3:2 (全幅)': 1.5, 
     '4:3 (标准)': 1.333, 
     '1:1 (方构图)': 1, 
@@ -14,14 +14,20 @@ const RATIOS = {
     '9:16 (手机)': 0.5625
 };
 
-const RESOLUTIONS = { 
+const RESOLUTIONS: Record<string, number> = { 
     '1080p': 1920, 
     '2K': 2560, 
     '4K': 3840, 
     '5K': 5120 
 };
 
-const Slider = ({ label, min, max, value, unit, step = 1, isPercent = false, onChange }) => (
+interface Photo {
+    img: HTMLImageElement;
+    ratio: number;
+    url: string;
+}
+
+const Slider = ({ label, min, max, value, unit, step = 1, isPercent = false, onChange }: any) => (
     <div className="space-y-1.5">
         <div className="flex justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
             <span>{label}</span>
@@ -40,7 +46,8 @@ const Slider = ({ label, min, max, value, unit, step = 1, isPercent = false, onC
 );
 
 const App = () => {
-    const [photos, setPhotos] = useState([]);
+    // 修正：添加 Photo 接口以获得更好的类型支持
+    const [photos, setPhotos] = useState<Photo[]>([]);
     const [settings, setSettings] = useState({
         mode: 'fixedWidth',
         size: 300,
@@ -56,7 +63,7 @@ const App = () => {
     const [seed, setSeed] = useState(Math.random());
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
-    const canvasRef = useRef(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const handleClear = () => {
         if (!confirm('确定清空所有照片吗？')) return;
@@ -72,22 +79,22 @@ const App = () => {
         setSeed(Math.random());
     };
 
-    // Added type annotation to event 'e' and mapped 'file' as 'File' to resolve 'unknown' type assignment to 'Blob | MediaSource'.
+    // 修正：为 e 添加 React.ChangeEvent<HTMLInputElement> 类型，并显式指定 Promise 的返回类型
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        const newPhotos = await Promise.all(files.map((file: File) => new Promise<{img: HTMLImageElement, ratio: number, url: string}>(res => {
+        const newPhotos = await Promise.all(files.map((file: File) => new Promise<Photo>(res => {
             const url = URL.createObjectURL(file);
             const img = new Image();
             img.onload = () => res({ img, ratio: img.width / img.height, url });
             img.src = url;
         })));
-        setPhotos((prev: any[]) => [...prev, ...newPhotos]);
+        setPhotos((prev) => [...prev, ...newPhotos]);
         e.target.value = '';
     };
 
     const canvasDims = useMemo(() => {
-        const baseSize = RESOLUTIONS[settings.res] || 1920;
-        let r = RATIOS[settings.ratio] || 1.5;
+        const baseSize = RESOLUTIONS[settings.res as keyof typeof RESOLUTIONS] || 1920;
+        let r = RATIOS[settings.ratio as keyof typeof RATIOS] || 1.5;
         if (settings.invertedRatio) r = 1 / r;
 
         let w, h;
@@ -122,7 +129,7 @@ const App = () => {
         ctx.translate(offset.x, offset.y);
 
         const { mode, size, gap } = settings;
-        const pseudoRandom = (i) => {
+        const pseudoRandom = (i: number) => {
             const x = Math.sin(i * 12.9898 + seed * 43758.5453) * 43758.5453;
             return x - Math.floor(x);
         };
@@ -151,9 +158,6 @@ const App = () => {
                 while (y < h * 4) {
                     const p = photos[idx % photos.length];
                     if (!p) break;
-                    const dh = size / p.ratio;
-                    ctx.drawImage(p.img, x, size * (1/p.ratio), size, size / p.ratio); // Corrected dh logic for drawing
-                    // Restore original logic: const dh = size / p.ratio; ctx.drawImage(p.img, x, y, size, dh);
                     const draw_dh = size / p.ratio;
                     ctx.drawImage(p.img, x, y, size, draw_dh);
                     y += draw_dh + gap;
@@ -172,12 +176,12 @@ const App = () => {
 
     useEffect(() => { render(); }, [render]);
 
-    const onMouseDown = (e) => {
+    const onMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX, y: e.clientY };
     };
 
-    const onMouseMove = (e) => {
+    const onMouseMove = (e: React.MouseEvent) => {
         if (!isDragging) return;
         const dx = (e.clientX - dragStart.current.x) / settings.zoom;
         const dy = (e.clientY - dragStart.current.y) / settings.zoom;
@@ -209,7 +213,7 @@ const App = () => {
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                             <button onClick={handleRandomize} disabled={!photos.length} className="btn-hover py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-bold rounded-xl uppercase tracking-wider">
-                                <i className="fas fa-random mr-2"></i> 随机乱序
+                                <i className="fas fa-random mr-2 text-blue-400"></i> 随机乱序
                             </button>
                             <button onClick={handleClear} disabled={!photos.length} className="btn-hover py-3 bg-zinc-800 hover:bg-red-900/20 hover:text-red-400 text-zinc-300 text-[11px] font-bold rounded-xl uppercase tracking-wider">
                                 <i className="fas fa-trash-alt mr-2"></i> 清空
@@ -260,10 +264,10 @@ const App = () => {
 
                     <section className="space-y-5">
                         <span className="control-group-title">3. 视觉微调</span>
-                        <Slider label="倾斜角度" min={-45} max={45} value={settings.tilt} unit="°" onChange={(v) => setSettings(s => ({...s, tilt: v}))} />
-                        <Slider label="图片比例" min={100} max={800} value={settings.size} unit="px" onChange={(v) => setSettings(s => ({...s, size: v}))} />
-                        <Slider label="间距" min={0} max={60} value={settings.gap} unit="px" onChange={(v) => setSettings(s => ({...s, gap: v}))} />
-                        <Slider label="预览缩放" min={0.05} max={2.0} step={0.05} value={settings.zoom} unit="%" isPercent onChange={(v) => setSettings(s => ({...s, zoom: v}))} />
+                        <Slider label="倾斜角度" min={-45} max={45} value={settings.tilt} unit="°" onChange={(v: number) => setSettings(s => ({...s, tilt: v}))} />
+                        <Slider label="图片比例" min={100} max={800} value={settings.size} unit="px" onChange={(v: number) => setSettings(s => ({...s, size: v}))} />
+                        <Slider label="间距" min={0} max={60} value={settings.gap} unit="px" onChange={(v: number) => setSettings(s => ({...s, gap: v}))} />
+                        <Slider label="预览缩放" min={0.05} max={2.0} step={0.05} value={settings.zoom} unit="%" isPercent onChange={(v: number) => setSettings(s => ({...s, zoom: v}))} />
                     </section>
                 </div>
 
@@ -307,7 +311,7 @@ const App = () => {
     );
 };
 
-// Use ReactDOM from react-dom/client to fix 'createRoot' missing and UMD global errors.
+// 修正：确保在全局环境下通过 ReactDOM 变量初始化，并使用 React 18 的 createRoot API (从 react-dom/client 导入)
 const rootElement = document.getElementById('root');
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
