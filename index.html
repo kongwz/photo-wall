@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Gallery Pro | 摄影海报墙</title>
+    <!-- 基础样式与图标 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- React 与 Babel (用于直接在浏览器运行 TSX) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+        .sidebar { background: rgba(10, 10, 12, 0.95); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.05); }
+        .canvas-viewport { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; overflow: hidden; background: #050505; cursor: grab; }
+        .canvas-viewport:active { cursor: grabbing; }
+        canvas { box-shadow: 0 0 100px rgba(0,0,0,0.8); transition: transform 0.1s ease-out; }
+        input[type="range"] { -webkit-appearance: none; background: #222; height: 4px; border-radius: 2px; width: 100%; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; border: 2px solid #000; }
+        .color-input-wrapper { position: relative; width: 100%; height: 32px; border-radius: 6px; overflow: hidden; border: 1px solid #333; }
+        .color-input-wrapper input { position: absolute; top: -10px; left: -10px; width: 150%; height: 150%; cursor: pointer; }
+        .btn-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-hover:active { transform: scale(0.95); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .signature-font { font-family: "Georgia", serif; font-style: italic; }
+        .control-group-title { font-size: 10px; color: #52525b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; border-left: 2px solid #3b82f6; padding-left: 8px; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <!-- 告诉 Babel 处理 index.tsx -->
+    <script type="text/babel" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
