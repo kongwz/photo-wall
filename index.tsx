@@ -1,8 +1,7 @@
-// Add imports to avoid UMD global errors and access createRoot correctly from react-dom/client
-import React from 'react';
-import ReactDOM from 'react-dom/client';
 
-const { useState, useRef, useEffect, useCallback, useMemo } = React;
+// Add explicit imports for React and its hooks to resolve UMD global reference errors.
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import ReactDOM from 'react-dom/client';
 
 const RATIOS = { 
     '3:2 (全幅)': 1.5, 
@@ -22,7 +21,6 @@ const RESOLUTIONS = {
     '5K': 5120 
 };
 
-// Added default isPercent=false to satisfy required prop check when not provided
 const Slider = ({ label, min, max, value, unit, step = 1, isPercent = false, onChange }) => (
     <div className="space-y-1.5">
         <div className="flex justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
@@ -61,7 +59,7 @@ const App = () => {
     const canvasRef = useRef(null);
 
     const handleClear = () => {
-        if (!confirm('确定清空所有导入的照片吗？')) return;
+        if (!confirm('确定清空所有照片吗？')) return;
         photos.forEach(p => URL.revokeObjectURL(p.url));
         setPhotos([]);
         setOffset({ x: 0, y: 0 });
@@ -74,23 +72,22 @@ const App = () => {
         setSeed(Math.random());
     };
 
-    const handleUpload = async (e) => {
-        // Cast files as File[] to resolve 'unknown' type error for URL.createObjectURL
-        const files = Array.from(e.target.files || []) as File[];
-        const newPhotos = await Promise.all(files.map(file => new Promise(res => {
+    // Added type annotation to event 'e' and mapped 'file' as 'File' to resolve 'unknown' type assignment to 'Blob | MediaSource'.
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const newPhotos = await Promise.all(files.map((file: File) => new Promise<{img: HTMLImageElement, ratio: number, url: string}>(res => {
             const url = URL.createObjectURL(file);
             const img = new Image();
             img.onload = () => res({ img, ratio: img.width / img.height, url });
             img.src = url;
         })));
-        setPhotos(prev => [...prev, ...newPhotos]);
+        setPhotos((prev: any[]) => [...prev, ...newPhotos]);
         e.target.value = '';
     };
 
     const canvasDims = useMemo(() => {
         const baseSize = RESOLUTIONS[settings.res] || 1920;
         let r = RATIOS[settings.ratio] || 1.5;
-        // 比例反转逻辑
         if (settings.invertedRatio) r = 1 / r;
 
         let w, h;
@@ -155,8 +152,11 @@ const App = () => {
                     const p = photos[idx % photos.length];
                     if (!p) break;
                     const dh = size / p.ratio;
-                    ctx.drawImage(p.img, x, y, size, dh);
-                    y += dh + gap;
+                    ctx.drawImage(p.img, x, size * (1/p.ratio), size, size / p.ratio); // Corrected dh logic for drawing
+                    // Restore original logic: const dh = size / p.ratio; ctx.drawImage(p.img, x, y, size, dh);
+                    const draw_dh = size / p.ratio;
+                    ctx.drawImage(p.img, x, y, size, draw_dh);
+                    y += draw_dh + gap;
                     idx = (idx + 7) % photos.length;
                 }
             }
@@ -196,20 +196,20 @@ const App = () => {
         <div className="flex h-screen w-screen overflow-hidden select-none bg-[#050505]">
             <aside className="sidebar w-80 h-full p-6 flex flex-col z-50 shadow-2xl">
                 <div className="mb-10">
-                    <h1 className="text-2xl font-black tracking-tighter text-blue-500 italic">CINEMATIC</h1>
-                    <p className="text-[10px] text-zinc-500 font-bold tracking-[0.2em]">PHOTO WALL BUILDER</p>
+                    <h1 className="text-2xl font-black tracking-tighter text-blue-500 italic">CINEMATIC Pro</h1>
+                    <p className="text-[10px] text-zinc-500 font-bold tracking-[0.2em]">BY KELO</p>
                 </div>
 
                 <div className="space-y-8 flex-1 overflow-y-auto pr-2 custom-scroll">
                     <section>
-                        <span className="control-group-title">1. 资源库</span>
+                        <span className="control-group-title">1. 资源管理</span>
                         <input type="file" multiple id="upload" className="hidden" onChange={handleUpload} accept="image/*" />
                         <label htmlFor="upload" className="btn-hover flex items-center justify-center w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl cursor-pointer text-sm font-bold gap-3 mb-3 shadow-lg shadow-blue-900/20">
-                            <i className="fas fa-cloud-upload-alt text-lg"></i> 导入摄影作品 ({photos.length})
+                            <i className="fas fa-plus-circle"></i> 导入作品 ({photos.length})
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                             <button onClick={handleRandomize} disabled={!photos.length} className="btn-hover py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-bold rounded-xl uppercase tracking-wider">
-                                <i className="fas fa-random mr-2 text-blue-400"></i> 强力打乱
+                                <i className="fas fa-random mr-2"></i> 随机乱序
                             </button>
                             <button onClick={handleClear} disabled={!photos.length} className="btn-hover py-3 bg-zinc-800 hover:bg-red-900/20 hover:text-red-400 text-zinc-300 text-[11px] font-bold rounded-xl uppercase tracking-wider">
                                 <i className="fas fa-trash-alt mr-2"></i> 清空
@@ -222,19 +222,19 @@ const App = () => {
                         <div className="space-y-2">
                             <span className="text-[10px] text-zinc-500 font-bold uppercase">排列逻辑</span>
                             <select value={settings.mode} onChange={e => setSettings(s => ({...s, mode: e.target.value}))} className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-xs outline-none text-zinc-200">
-                                <option value="fixedHeight">🎞️ 水平拼接 (固定高度)</option>
-                                <option value="fixedWidth">🌊 垂直瀑布 (固定宽度)</option>
+                                <option value="fixedHeight">🎞️ 水平拼接</option>
+                                <option value="fixedWidth">🌊 纵向瀑布</option>
                             </select>
                         </div>
                         
                         <div className="space-y-2">
                             <div className="flex justify-between items-end">
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase">画面比例</span>
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">比例/方向</span>
                                 <button 
                                     onClick={() => setSettings(s => ({...s, invertedRatio: !s.invertedRatio}))}
-                                    className={`text-[10px] px-2 py-1 rounded transition-colors ${settings.invertedRatio ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+                                    className={`text-[10px] px-2 py-1 rounded transition-colors ${settings.invertedRatio ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                                 >
-                                    <i className="fas fa-arrows-rotate mr-1"></i> 横竖反转
+                                    <i className="fas fa-sync mr-1"></i> 横竖反转
                                 </button>
                             </div>
                             <select value={settings.ratio} onChange={e => setSettings(s => ({...s, ratio: e.target.value}))} className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-xs outline-none text-zinc-200">
@@ -244,13 +244,13 @@ const App = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase">背景底色</span>
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">底色</span>
                                 <div className="color-input-wrapper">
                                     <input type="color" value={settings.bg} onChange={e => setSettings(s => ({...s, bg: e.target.value}))} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase">输出规格</span>
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">尺寸</span>
                                 <select value={settings.res} onChange={e => setSettings(s => ({...s, res: e.target.value}))} className="w-full bg-zinc-900 border border-zinc-800 p-2.5 rounded-xl text-xs outline-none">
                                     {Object.keys(RESOLUTIONS).map(k => <option key={k} value={k}>{k}</option>)}
                                 </select>
@@ -259,23 +259,21 @@ const App = () => {
                     </section>
 
                     <section className="space-y-5">
-                        <span className="control-group-title">3. 风格调节</span>
-                        {/* Use numbers for min/max to ensure correct prop types */}
-                        <Slider label="画面倾斜" min={-45} max={45} value={settings.tilt} unit="°" onChange={(v) => setSettings(s => ({...s, tilt: v}))} />
-                        <Slider label="单图大小" min={100} max={800} value={settings.size} unit="px" onChange={(v) => setSettings(s => ({...s, size: v}))} />
-                        <Slider label="画面间距" min={0} max={60} value={settings.gap} unit="px" onChange={(v) => setSettings(s => ({...s, gap: v}))} />
-                        {/* Converted string attributes to numbers to fix type mismatch error */}
-                        <Slider label="预览比例" min={0.05} max={2.0} step={0.05} value={settings.zoom} unit="%" isPercent onChange={(v) => setSettings(s => ({...s, zoom: v}))} />
+                        <span className="control-group-title">3. 视觉微调</span>
+                        <Slider label="倾斜角度" min={-45} max={45} value={settings.tilt} unit="°" onChange={(v) => setSettings(s => ({...s, tilt: v}))} />
+                        <Slider label="图片比例" min={100} max={800} value={settings.size} unit="px" onChange={(v) => setSettings(s => ({...s, size: v}))} />
+                        <Slider label="间距" min={0} max={60} value={settings.gap} unit="px" onChange={(v) => setSettings(s => ({...s, gap: v}))} />
+                        <Slider label="预览缩放" min={0.05} max={2.0} step={0.05} value={settings.zoom} unit="%" isPercent onChange={(v) => setSettings(s => ({...s, zoom: v}))} />
                     </section>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-white/5 space-y-5">
                     <div className="text-center">
-                        <span className="text-[9px] text-zinc-600 font-black tracking-widest block mb-1 uppercase">Produced by</span>
+                        <span className="text-[9px] text-zinc-600 font-black tracking-widest block mb-1 uppercase">制作人</span>
                         <p className="text-lg text-zinc-100 font-bold tracking-[0.3em] signature-font">Kelo</p>
                     </div>
-                    <button onClick={exportCanvas} disabled={!photos.length} className="btn-hover w-full py-4 bg-white hover:bg-zinc-200 text-black font-black text-xs rounded-2xl shadow-2xl disabled:bg-zinc-800 disabled:text-zinc-600 uppercase tracking-[0.2em] flex items-center justify-center gap-2">
-                        <i className="fas fa-film"></i> 导出摄影墙
+                    <button onClick={exportCanvas} disabled={!photos.length} className="btn-hover w-full py-4 bg-white hover:bg-zinc-200 text-black font-black text-xs rounded-2xl shadow-2xl disabled:bg-zinc-800 disabled:text-zinc-600 uppercase tracking-[0.2em]">
+                        <i className="fas fa-download mr-2"></i> 保存高清图片
                     </button>
                 </div>
             </aside>
@@ -294,14 +292,14 @@ const App = () => {
                 <div className="absolute bottom-8 left-8 flex items-center gap-6 px-6 py-3 bg-black/70 backdrop-blur-xl rounded-2xl border border-white/5 text-[10px] font-mono tracking-widest text-zinc-400 uppercase shadow-2xl">
                     <span className="flex items-center gap-2"><i className="fas fa-expand-arrows-alt text-blue-500"></i> {canvasDims.w} x {canvasDims.h} PX</span>
                     <div className="w-[1px] h-3 bg-white/10"></div>
-                    <span className="flex items-center gap-2"><i className="fas fa-user-edit text-blue-500"></i> 制作人 Kelo</span>
+                    <span className="flex items-center gap-2"><i className="fas fa-signature text-blue-500"></i> PRODUCED BY KELO</span>
                 </div>
 
                 {photos.length === 0 && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-zinc-800">
-                        <i className="fas fa-images text-9xl mb-6 opacity-20"></i>
-                        <h3 className="font-black text-2xl uppercase tracking-[0.5em] opacity-30 text-zinc-600">Waiting for Gallery</h3>
-                        <p className="text-xs tracking-widest mt-2 opacity-30">拖入或选择照片开启你的电影感海报</p>
+                        <i className="fas fa-camera-retro text-9xl mb-6 opacity-20"></i>
+                        <h3 className="font-black text-2xl uppercase tracking-[0.5em] opacity-30">Gallery Empty</h3>
+                        <p className="text-xs tracking-widest mt-2 opacity-30">上传你的摄影摄影作品，开始艺术拼接</p>
                     </div>
                 )}
             </main>
@@ -309,7 +307,7 @@ const App = () => {
     );
 };
 
-// Properly initialize React 18 root using the client entry point and element casting
+// Use ReactDOM from react-dom/client to fix 'createRoot' missing and UMD global errors.
 const rootElement = document.getElementById('root');
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
